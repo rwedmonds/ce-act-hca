@@ -1,0 +1,252 @@
+---
+# ------------------------------------------------------- #
+# L3LS Fabric Values - update these values with caution,
+# SOME CHANGES COULD BE DISRUPTIVE.
+# ------------------------------------------------------- #
+dc_name: "CAMPUS"
+fabric_name: "HCA"
+
+# --------------------------------------------- #
+# Update p2p mtu 9000 -> 1500
+# MTU 9000 not supported in vEOS-LAB
+# --------------------------------------------- #
+p2p_uplinks_mtu: 1500
+
+# --------------------------------------------- #
+# bgp update wait install command
+# not supported in vEOS
+# --------------------------------------------- #
+bgp_update_wait_install: false
+
+# --------------------------------------------- #
+# Management interface default gateway
+# --------------------------------------------- #
+mgmt_gateway: "192.168.0.1"
+
+# --------------------------------------------- #
+# Adjust default bfd values to avoid high CPU
+# --------------------------------------------- #
+bfd_multihop:
+  interval: 1200
+  min_rx: 1200
+  multiplier: 3
+
+# --------------------------------------------- #
+# Enable vlan aware bundles
+# --------------------------------------------- #
+evpn_vlan_aware_bundles: true
+
+# --------------------------------------------- #
+# Shutdown interfaces on devices that face
+# undeployed peers
+# --------------------------------------------- #
+shutdown_interfaces_towards_undeployed_peers: true
+
+# --------------------------------------------- #
+# Shutdown interfaces that are not in use
+# --------------------------------------------- #
+csc_interface_defaults:
+  ethernet:
+    shutdown: true
+
+# --------------------------------------------- #
+# bgp peer groups passwords
+# --------------------------------------------- #
+bgp_peer_groups:
+  ipv4_underlay_peers:
+    password: "AQQvKeimxJu+uGQ/yYvv9w=="
+  evpn_overlay_peers:
+    password: "q+VNViP5i4rVjW1cxFv2wA=="
+  mlag_ipv4_underlay_peer:
+    password: "vnEaG8gMeQf3d3cN6PktXQ=="
+
+# --------------------------------------------- #
+# Spines
+# --------------------------------------------- #
+spine_bgp_defaults:
+  - "distance bgp 20 200 200"
+  - "graceful-restart restart-time 300"
+  - "graceful-restart"
+
+spine:
+  defaults:
+    platform: "vEOS-LAB"
+    bgp_as: 65300
+    loopback_ipv4_pool: "192.168.224.0/24"
+
+  nodes:
+    - name: "c-spine1"
+      id: 31
+      mgmt_ip: "192.168.0.51/24"
+
+    - name: "c-spine2"
+      id: 32
+      mgmt_ip: "192.168.0.52/24"
+
+# --------------------------------------------- #
+# L3Leafs
+# --------------------------------------------- #
+leaf_bgp_defaults:
+  - "distance bgp 20 200 200"
+  - "graceful-restart restart-time 300"
+  - "graceful-restart"
+# --------------------------------------------- #
+# Leaf switch groups
+# A maximum of two nodes can form a leaf group
+# When two nodes are in a leaf group this will
+# automatically form MLAG pair
+# --------------------------------------------- #
+l3leaf:
+  defaults:
+    platform: "vEOS-LAB"
+    loopback_ipv4_pool: "172.16.30.0/24"
+    vtep_loopback_ipv4_pool: "172.16.31.0/24"
+    uplink_switches:
+      - "c-spine1"
+      - "c-spine2"
+    uplink_interfaces:
+      - "Ethernet1"
+      - "Ethernet2"
+    uplink_ipv4_pool: "172.16.0.0/24"
+    mlag_peer_link_allowed_vlans: "2-4094"
+    mlag_interfaces:
+      - "Ethernet11"
+      - "Ethernet12"
+    mlag_peer_ipv4_pool: "10.255.255.0/24"
+    mlag_peer_l3_ipv4_pool: "10.255.254.0/24"
+    mlag_dual_primary_detection: true
+    virtual_router_mac_address: "00:1c:73:00:dc:01"
+    spanning_tree_mode: "mstp"
+    spanning_tree_priority: 16384
+
+  node_groups:
+    - group: "c-leaf1"
+      bgp_as: 65301
+
+      nodes:
+        - name: "c-leaf1a"
+          id: 33
+          mgmt_ip: "192.168.0.53/24"
+          uplink_switch_interfaces:
+            - "Ethernet5"
+            - "Ethernet5"
+        - name: "c-leaf1b"
+          id: 34
+          mgmt_ip: "192.168.0.54/24"
+          uplink_switch_interfaces:
+            - "Ethernet6"
+            - "Ethernet6"
+
+    - group: "c-leaf2"
+      bgp_as: 65302
+
+      nodes:
+        - name: "c-leaf2a"
+          id: 35
+          mgmt_ip: "192.168.0.55/24"
+          uplink_switch_interfaces:
+            - "Ethernet7"
+            - "Ethernet7"
+          l3_interfaces:
+            - name: "Ethernet3"
+              ip_address: "169.254.30.0/31"
+              enabled: true
+          structured_config:
+            router_bgp:
+              bgp:
+                default:
+                  ipv4_unicast: false
+              distance:
+                external_routes: 20
+                internal_routes: 200
+                local_routes: 200
+              graceful_restart:
+                enabled: true
+              maximum_paths:
+                paths: 4
+                ecmp: 4
+              peer_groups:
+                - name: "WAN"
+                  remote_as: 65534
+                  description: "WAN Routers"
+                  bfd: true
+                  send_community: "all"
+                  maximum_routes: 12000
+              neighbors:
+                - ip_address: "169.254.30.1"
+                  peer_group: "WAN"
+                  description: "WAN Router"
+              address_family_ipv4:
+                peer_groups:
+                  - name: "WAN"
+                    activate: true
+
+        - name: "c-leaf2b"
+          id: 36
+          mgmt_ip: "192.168.0.56/24"
+          uplink_switch_interfaces:
+            - "Ethernet8"
+            - "Ethernet8"
+          l3_interfaces:
+            - name: "Ethernet3"
+              ip_address: "169.254.30.2/31"
+              enabled: true
+          structured_config:
+            router_bgp:
+              bgp:
+                default:
+                  ipv4_unicast: false
+              distance:
+                external_routes: 20
+                internal_routes: 200
+                local_routes: 200
+              graceful_restart:
+                enabled: true
+              maximum_paths:
+                paths: 4
+                ecmp: 4
+              peer_groups:
+                - name: "WAN"
+                  remote_as: 65534
+                  description: "WAN Routers"
+                  bfd: true
+                  send_community: "all"
+                  maximum_routes: 12000
+              neighbors:
+                - ip_address: "169.254.30.3"
+                  peer_group: "WAN"
+                  description: "WAN Router"
+              address_family_ipv4:
+                peer_groups:
+                  - name: "WAN"
+                    activate: true
+
+# --------------------------------------------- #
+# L2Leafs
+# --------------------------------------------- #
+l2leaf:
+  defaults:
+    mlag: false
+    platform: "vEOS-LAB"
+    uplink_switches:
+      - "c-leaf2a"
+      - "c-leaf2b"
+    uplink_interfaces:
+      - "Ethernet1"
+      - "Ethernet2"
+  node_groups:
+    - group: "c-leaf2"
+      filter:
+      nodes:
+        - name: "c-leaf2c"
+          id: 37
+          mgmt_ip: "192.168.0.57/24"
+          uplink_switch_interfaces:
+            - "Ethernet5"
+            - "Ethernet5"
+        - name: "c-leaf2d"
+          id: 38
+          mgmt_ip: "192.168.0.58/24"
+          uplink_switch_interfaces:
+            - "Ethernet6"
+            - "Ethernet6"

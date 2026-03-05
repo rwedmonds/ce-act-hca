@@ -1,0 +1,4 @@
+ansible_user: admin
+ansible_password: arista123
+anta_user: admin
+anta_password: arista123

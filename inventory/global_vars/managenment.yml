@@ -1,0 +1,153 @@
+---
+# ------------------------------------------------------- #
+# Global Settings
+# ------------------------------------------------------- #
+
+# ----------------------------------- #
+# Prefix for
+# custom_structured_configuration
+# ----------------------------------- #
+
+custom_structured_configuration_prefix:
+  - csc_
+
+# ----------------------------------- #
+# Management API HTTP
+# ----------------------------------- #
+
+csc_management_api_http:
+  enable_http: True
+  enable_vrfs:
+    - name: "default"
+
+# ----------------------------------- #
+# Disable LLDP on Management interface
+# ----------------------------------- #
+
+csc_ethernet_interfaces:
+  - name: "Management1"
+    lldp:
+      transmit: false
+      receive: false
+
+# ----------------------------------- #
+# Source SSH sessions from Lo0
+# ----------------------------------- #
+
+csc_ip_ssh_client_source_interfaces:
+  - name: "Loopback0"
+
+# ----------------------------------- #
+# Local Users
+# ----------------------------------- #
+# MARK: Users
+csc_local_users: "{{ secrets.local_users }}"
+
+# ----------------------------------- #
+# Enable Password
+# ----------------------------------- #
+
+csc_enable_password: "{{ secrets.enable_password }}"
+
+# ----------------------------------- #
+# TerminAttr Config
+# ----------------------------------- #
+# MARK: TerminAttr
+csc_daemon_terminattr:
+  # Address of the gRPC server on CloudVision
+  # TCP 9910 is used for on-prem CV
+  # TCP 443 is used on CV as a Service
+  cvaddrs: # For single cluster
+    - "192.168.0.5:9910"
+  cvauth:
+    method: "token"
+    token_file: "/tmp/cv-onboarding-token"
+  cvvrf: "default"
+  # Exclude paths from Sysdb on the ingest side
+  # ingestexclude: "/Sysdb/cell/1/agent,/Sysdb/cell/2/agent"
+  # Exclude paths from the shared memory table
+  smashexcludes: "ale,flexCounter,hardware,kni,pulse,strata"
+  disable_aaa: true
+
+# ----------------------------------- #
+# OOB Management
+# ----------------------------------- #
+# MARK: OOB
+csc_mgmt_interface_vrf: "default"
+csc_management_interfaces:
+  - name: "Management1"
+    shutdown: false
+
+# mgmt_vrf_routing: false
+
+# ----------------------------------- #
+# DNS Servers
+# ----------------------------------- #
+# MARK: Servers
+csc_ip_name_servers:
+  - ip_address: "169.254.169.254"
+    vrf: "default"
+
+# ----------------------------------- #
+# NTP Servers
+# ----------------------------------- #
+# NTP Servers IP or DNS name, first NTP server will be preferred,
+# and sourced from Management VRF
+
+csc_ntp:
+  local_interface:
+    name: "Management1"
+    vrf: "default"
+  servers:
+    - name: "1.pool.ntp.org"
+      vrf: "default"
+
+csc_clock:
+  timezone: America/Chicago
+
+# ----------------------------------- #
+# Raw EOS CLI commands
+# ----------------------------------- #
+
+csc_eos_cli: no schedule tech-support
+
+# ----------------------------------- #
+# MARK: Banner
+# ----------------------------------- #
+# banners:
+#   login: |
+#     * * * * * * * * * * W A R N I N G * * * * * * * * * *
+#     This computer system is the property of me.
+#     It is for authorized use only.
+#     By using this system, all users acknowledge notice of,
+#     and agree to comply with, the Acceptable Use Policy
+#     (“AUP”).
+#     Unauthorized or improper use of this system may result
+#     in administrative disciplinary action.
+#     By continuing to use this system you indicate your
+#     awareness of and consent to these terms and
+#     conditions of use.
+#     * * * * * * * * * * W A R N I N G * * * * * * * * * *
+#     EOF
+#   motd: |
+#     ******************************************
+#     *    __    __    ______     ___          *
+#     *    |  |  |  |  /      |   /   \        *
+#     *    |  |__|  | |  ,----'  /  ^  \       *
+#     *    |   __   | |  |      /  /_\  \      *
+#     *    |  |  |  | |  `----./  _____  \     *
+#     *    |__|  |__|  \______/__/     \__\    *
+#     *                                        *
+#     ******************************************
+#     EOF
+
+# ----------------------------------- #
+# SNMP Settings Test
+# ----------------------------------- #
+csc_snmp_settings:
+  location: true
+
+csc_snmp_server:
+  vrfs:
+    - name: "default"
+      enable: true

@@ -1,0 +1,14 @@
+---
+- name: Run ANTA
+  connection: httpapi
+  hosts: "HCA"
+  gather_facts: false
+  ignore_errors: true
+  tasks:
+    - name: Include Ansible Vault
+      ansible.builtin.include_vars:
+        file: auth.yml
+    - name: Run ANTA on EOS devices
+      import_role:
+        name: arista.avd.anta_runner
+      ignore_errors: true
