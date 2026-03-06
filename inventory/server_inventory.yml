@@ -7,32 +7,37 @@ all:
         ansible_ssh_pass: arista123
       hosts:
         # ------------------------------------- #
+        # Ansible
+        # ------------------------------------- #
+        ansible:
+          ansible_host: 10.18.173.25
+        # ------------------------------------- #
         # Campus A
         # ------------------------------------- #
         a-leaf1-server1:
-          ansible_host: 10.255.0.108
+          ansible_host: 10.18.145.104
         a-leaf2-server1:
-          ansible_host: 10.255.0.161
+          ansible_host: 10.18.173.29
         # ------------------------------------- #
         # Campus B
         # ------------------------------------- #
         b-leaf1-server1:
-          ansible_host: 10.255.0.95
+          ansible_host: 10.18.173.16
         b-leaf2-server1:
-          ansible_host: 10.255.0.107
+          ansible_host: 10.18.146.175
         b-leaf2-wifi:
-          ansible_host: 10.255.0.155
+          ansible_host: 10.18.146.159
         # ------------------------------------- #
         # Campus C
         # ------------------------------------- #
         c-leaf1-server1:
-          ansible_host: 10.255.0.99
+          ansible_host: 10.18.146.162
         c-leaf2-server1:
-          ansible_host: 10.255.0.106
+          ansible_host: 10.18.173.21
         # ------------------------------------- #
         # Campus D
         # ------------------------------------- #
         d-leaf1-server1:
-          ansible_host: 10.255.0.162
+          ansible_host: 10.18.173.26
         d-leaf2-server1:
-          ansible_host: 10.255.0.156
+          ansible_host: 10.18.146.170

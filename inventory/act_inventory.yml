@@ -10,8 +10,8 @@ all:
           ansible_host: "10.18.183.94"
           ansible_httpapi_host: "10.18.183.94"
           ansible_user: "cvaas"
-          ansible_password: "{{lookup('file', '../global_vars/cv.token')}}"
-          ansible_ssh_pass: "{{lookup('file', '../global_vars/cv.token')}}"
+          ansible_password: "{{lookup('file', '../global_vars/avd.token')}}"
+          ansible_ssh_pass: "{{lookup('file', '../global_vars/avd.token')}}"
           ansible_become: true
           ansible_become_method: enable
           ansible_connection: httpapi
