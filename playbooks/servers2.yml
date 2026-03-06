@@ -1,0 +1,220 @@
+---
+- name: Configure server for user robert
+  hosts: all
+  become: true
+
+  vars:
+    target_user: robert
+    ssh_key_name: act
+    ssh_key_type: ed25519
+    omp_themes_base_url: https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes
+    omp_themes:
+      - stelbent.minimal.omp.json
+
+  tasks:
+
+    # ─── 1. Create user "robert" ───────────────────────────────────────────────
+    - name: Create user {{ target_user }}
+      ansible.builtin.user:
+        name: "{{ target_user }}"
+        shell: /bin/bash
+        create_home: true
+        state: present
+
+    # ─── 2. Generate SSH key "act" (ed25519) ──────────────────────────────────
+    - name: Generate SSH key {{ ssh_key_name }} for {{ target_user }}
+      ansible.builtin.user:
+        name: "{{ target_user }}"
+        generate_ssh_key: true
+        ssh_key_type: "{{ ssh_key_type }}"
+        ssh_key_file: ".ssh/{{ ssh_key_name }}"
+        ssh_key_comment: "{{ ssh_key_name }}"
+
+    # ─── 3. Copy new SSH key to the server for robert ─────────────────────────
+    - name: Read generated public key
+      ansible.builtin.slurp:
+        src: "/home/{{ target_user }}/.ssh/{{ ssh_key_name }}.pub"
+      register: ssh_public_key
+
+    - name: Add public key to authorized_keys for {{ target_user }}
+      ansible.posix.authorized_key:
+        user: "{{ target_user }}"
+        key: "{{ ssh_public_key.content | b64decode }}"
+        state: present
+
+    # ─── 4. Install apt packages ───────────────────────────────────────────────
+    - name: Install required apt packages
+      ansible.builtin.apt:
+        name:
+          - zsh
+          - curl
+          - unzip
+          - fzf
+          - ripgrep
+          - bat
+          - gpg
+          - gnupg
+          - acl
+        state: present
+        update_cache: true
+
+    # ─── 5. Make ZSH the default shell for robert ─────────────────────────────
+    - name: Set ZSH as default shell for {{ target_user }}
+      ansible.builtin.user:
+        name: "{{ target_user }}"
+        shell: /bin/zsh
+
+    # ─── 6. Configure doas for robert ────────────────────────────────────────
+    - name: Ensure /etc/doas.conf exists
+      ansible.builtin.file:
+        path: /etc/doas.conf
+        state: touch
+        owner: root
+        group: root
+        mode: '0600'
+        modification_time: preserve
+        access_time: preserve
+
+    - name: Add doas permit rule for {{ target_user }}
+      ansible.builtin.lineinfile:
+        path: /etc/doas.conf
+        line: "permit nopass keepenv {{ target_user }} as root"
+        state: present
+
+    # ─── 7. Install Oh-My-Posh ────────────────────────────────────────────────
+    - name: Install Oh-My-Posh for {{ target_user }}
+      ansible.builtin.shell:
+        cmd: curl -s https://ohmyposh.dev/install.sh | bash -s -- -d ~/.local/bin
+        creates: "/home/{{ target_user }}/.local/bin/oh-my-posh"
+      become_user: "{{ target_user }}"
+
+    - name: Create Oh-My-Posh themes directory
+      ansible.builtin.file:
+        path: "/home/{{ target_user }}/.config/zsh/oh-my-posh/themes"
+        state: directory
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0755'
+
+    - name: Create Oh-My-Posh plugins directory
+      ansible.builtin.file:
+        path: "/home/{{ target_user }}/.config/zsh/oh-my-posh/plugins"
+        state: directory
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0755'
+
+    - name: Download Oh-My-Posh themes
+      ansible.builtin.get_url:
+        url: "{{ omp_themes_base_url }}/{{ item }}"
+        dest: "/home/{{ target_user }}/.config/zsh/oh-my-posh/themes/{{ item }}"
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0644'
+      loop: "{{ omp_themes }}"
+
+    - name: Copy Oh-My-Posh plugins
+      ansible.builtin.copy:
+        src: files/oh-my-posh/plugins/
+        dest: "/home/{{ target_user }}/.config/zsh/oh-my-posh/plugins/"
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0644'
+
+    # ─── 8. Install eza ────────────────────────────────────────────────────────
+    - name: Add eza GPG key
+      ansible.builtin.shell:
+        cmd: wget -qO- https://raw.githubusercontent.com/eza-community/eza/main/deb.asc | gpg --dearmor -o /etc/apt/keyrings/gierens.gpg
+        creates: /etc/apt/keyrings/gierens.gpg
+
+    - name: Create /etc/apt/keyrings directory
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Add eza apt repository
+      ansible.builtin.apt_repository:
+        repo: "deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://deb.gierens.de stable main"
+        filename: gierens
+        state: present
+
+    - name: Set correct permissions on eza keyring and list
+      ansible.builtin.file:
+        path: "{{ item }}"
+        mode: '0644'
+      loop:
+        - /etc/apt/keyrings/gierens.gpg
+        - /etc/apt/sources.list.d/gierens.list
+
+    - name: Install eza
+      ansible.builtin.apt:
+        name: eza
+        state: present
+        update_cache: true
+
+    # ─── 9. Install Zoxide ────────────────────────────────────────────────────
+    - name: Install Zoxide for {{ target_user }}
+      ansible.builtin.shell:
+        cmd: curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh
+        creates: "/home/{{ target_user }}/.local/bin/zoxide"
+      become_user: "{{ target_user }}"
+
+    - name: Rebuild zsh completion cache after Zoxide install
+      ansible.builtin.shell:
+        cmd: rm -f ~/.zcompdump*; zsh -c 'autoload -Uz compinit && compinit'
+      become_user: "{{ target_user }}"
+      changed_when: false
+
+    # ─── 10. Install Neovim ───────────────────────────────────────────────────
+    - name: Download Neovim tarball
+      ansible.builtin.get_url:
+        url: https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
+        dest: /tmp/nvim-linux-x86_64.tar.gz
+        mode: '0644'
+
+    - name: Remove old Neovim installation if present
+      ansible.builtin.file:
+        path: /opt/nvim-linux-x86_64
+        state: absent
+
+    - name: Extract Neovim to /opt
+      ansible.builtin.unarchive:
+        src: /tmp/nvim-linux-x86_64.tar.gz
+        dest: /opt
+        remote_src: true
+
+    # ─── 11. Install LazyVim ──────────────────────────────────────────────────
+    - name: Back up existing Neovim config directories
+      ansible.builtin.shell: |
+        for dir in ~/.config/nvim ~/.local/share/nvim ~/.local/state/nvim ~/.cache/nvim; do
+          if [ -d "$dir" ] && [ ! -d "${dir}.bak" ]; then
+            mv "$dir" "${dir}.bak"
+          fi
+        done
+      become_user: "{{ target_user }}"
+      changed_when: false
+
+    - name: Clone LazyVim starter config
+      ansible.builtin.git:
+        repo: https://github.com/LazyVim/starter
+        dest: "/home/{{ target_user }}/.config/nvim"
+        update: false
+      become_user: "{{ target_user }}"
+
+    # ─── 12. Copy .zshrc and .aliasrc ─────────────────────────────────────────
+    - name: Copy .zshrc to home directory for {{ target_user }}
+      ansible.builtin.copy:
+        src: files/.zshrc
+        dest: "/home/{{ target_user }}/.zshrc"
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0644'
+
+    - name: Copy .aliasrc to home directory for {{ target_user }}
+      ansible.builtin.copy:
+        src: files/.aliasrc
+        dest: "/home/{{ target_user }}/.aliasrc"
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0644'
