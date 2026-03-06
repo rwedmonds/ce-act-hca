@@ -55,6 +55,7 @@
           - gpg
           - gnupg
           - acl
+          - doas
         state: present
         update_cache: true
 
@@ -218,3 +219,10 @@
         owner: "{{ target_user }}"
         group: "{{ target_user }}"
         mode: '0644'
+
+    # ─── 13. Add robert to the docker group ──────────────────────────────────
+    - name: Add {{ target_user }} to the docker group
+      ansible.builtin.user:
+        name: "{{ target_user }}"
+        groups: docker
+        append: true
